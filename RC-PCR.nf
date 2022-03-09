@@ -5,7 +5,12 @@ params.reads = "$baseDir/test/test_OUT01_R{1,2}.fastq.gz"
 params.UMILEN = 18
 params.minreadlength = 100
 params.database = "18S"
+params.snp_database = "CYP51A"
 params.abricate = true
+params.visuals = true
+
+NXF_OPTS="-Xms8g -Xmx8g"
+_JAVA_OPTIONS="-Xms8g -Xmx8g"
 
 // Parsing the input parameters
 outDir           = "$params.outDir"
@@ -13,13 +18,15 @@ threads          = "$params.threads"
 UMILEN           = "$params.UMILEN"
 minreadlength    = "$params.minreadlength"
 database         = "$params.database"
+snp_database     = "$params.snp_database"
 primerfile       = "${baseDir}/db/${database}/primers/${database}_primers.fasta"
 bedfile          = "${baseDir}/db/${database}/primers/${database}_primers.bed"
 KMAdb            = "${baseDir}/db/${database}/KMA/${database}"
 blastdbpath      = "${baseDir}/db/${database}/"
-STARfasta        = "${baseDir}/db/${database}/STAR/CYP51A.fa"
+STARfasta        = "${baseDir}/db/${snp_database}/STAR/${snp_database}.fa"
 def samplename   = file("$params.reads").simpleName[0].split('_')[0]
 abricate         = "$params.abricate"
+visuals          = "$params.visuals"
 
 // Tools paths and command prefixes
 reporter         = "$baseDir/scripts/final_report.py"
@@ -37,7 +44,7 @@ Channel
 
 log.info """
 
-NEXTFLOW RC-PCR V0.2
+NEXTFLOW 18S/CYP51A RC-PCR V0.3
 ================================
 samplename : $samplename
 reads      : $params.reads
@@ -52,8 +59,9 @@ database   : $params.database
 ~~~~~~~~~~~Databases~~~~~~~~~~~
 primerfile : $primerfile
 bedfile    : $bedfile
-blastdb    : $blastdbpath+"blast"
+blastdb    : $blastdbpath/blast
 KMAdb      : $KMAdb
+STARfasta  : $STARfasta
 
 ~~~~~~~~~~~Authors~~~~~~~~~~~~~~
         J.P.M. Coolen
@@ -86,19 +94,49 @@ process '1A_clean_reads' {
 
 // Clean reads (adapter and read length filter)
 process '2A_measure_amplicons' {
-    tag '1A'
+    tag '2A'
     conda 'conda-forge::pandas=1.2.4 bioconda::pysam=0.15.3 anaconda::openpyxl'
-    publishDir outDir, mode: 'copy'
+    publishDir outDir + '/report/UMI', mode: 'copy'
     input:
         set file(forward_read), file(reverse_read) from fastp_2A
     output:
-        file "*.csv"
+        file "*.csv" into UMI_2B
         file ".command.*"
     script:
         """
         python $baseDir/scripts/main.py --input $forward_read --primers ${primerfile}
         """
 }
+
+// Clean reads (adapter and read length filter)
+process '2B_plot_amplicons' {
+    tag '2B'
+    conda "${baseDir}/conda/env-nodejs"
+    publishDir outDir + '/report/UMI', mode: 'copy'
+    input:
+        file UMI from UMI_2B
+    output:
+        file ".command.*"
+    script:
+        """
+        python ${baseDir}/conda/env-nodejs/sunburst/data-processing/sunburst-parsing.py -i $UMI \
+        -o ${baseDir}/conda/env-nodejs/sunburst/Data.csv
+
+        cd ${baseDir}/conda/env-nodejs/sunburst/
+
+        #excute nodejs code
+        npm run build
+
+        # copy files manual to report folder
+        mkdir -p ${outDir}/report/UMI
+        cp index.html ${outDir}/report/UMI
+        cp -r dist ${outDir}/report/UMI/
+        cp style.css ${outDir}/report/UMI
+        cp ${baseDir}/conda/env-nodejs/sunburst/Data.csv ${outDir}/report/UMI
+
+        """
+}
+
 
 // create KMA tool to detect 16S
 // Process 3A: KMA
@@ -114,6 +152,7 @@ process '3A_KMA' {
     file "${samplename}.vcf.gz"
     file "${samplename}.fsa" into consensus_4C
     file "${samplename}.sam" into kma_3B
+    file "${samplename}.res" into classify_7B
     file ".command.*"
   script:
     """
@@ -137,9 +176,6 @@ process '3B_process_KMA' {
     file ".command.*"
   script:
     """
-
-    # merge sam files
-
     # sam --> bam
     samtools view -b ${sam} > ${samplename}.bam
     # sort bam
@@ -166,23 +202,26 @@ process '3C_STAR' {
     file "*"
     file "${samplename}Aligned.sortedByCoord.out.bam" into bam_4A, bam_4B
     file "${samplename}Aligned.sortedByCoord.out.bam.bai" into bamindex_4A, bamindex_4B
+    file "${samplename}.unique.sorted.bam" into bam_5B
+    file "${samplename}.unique.sorted.bam.bai" into bamindex_5B
     file ".command.*"
   script:
-    if(database=="CYP51A")
     """
     ## create database
-    #STAR --runMode genomeGenerate --genomeDir "${baseDir}/db/${database}/STAR/" --genomeFastaFiles $STARfasta --genomeSAindexNbases 4
-    STAR --genomeDir "${baseDir}/db/${database}/STAR/" --readFilesCommand zcat --readFilesIn ${reads[0]} ${reads[1]} \
+    #STAR --runMode genomeGenerate --genomeDir "${baseDir}/db/CYP51A/STAR/" --genomeFastaFiles $STARfasta --genomeSAindexNbases 4
+    STAR --genomeDir "${baseDir}/db/${snp_database}/STAR/" --readFilesCommand zcat --readFilesIn ${reads[0]} ${reads[1]} \
     --scoreDelOpen 0 --scoreDelBase 0 --scoreInsOpen 0 --scoreInsBase 0 \
     --seedSearchStartLmax 20 --winAnchorMultimapNmax 200 --seedMultimapNmax 100000 \
+    --alignIntronMax 100 \
     --runThreadN ${threads} --outFileNamePrefix ${samplename} --limitBAMsortRAM 1001609349 --outSAMtype BAM SortedByCoordinate
 
+    # remove duplicates for visualization
+    samtools rmdup ${samplename}Aligned.sortedByCoord.out.bam ${samplename}.unique.bam
+    # sort bam file unique
+    samtools sort ${samplename}.unique.bam > ${samplename}.unique.sorted.bam
+    # index bam files
+    samtools index ${samplename}.unique.sorted.bam
     samtools index ${samplename}Aligned.sortedByCoord.out.bam
-    """
-    else if(database!="CYP51A")
-    """
-    echo 'none' > ${samplename}Aligned.sortedByCoord.out.bam
-    echo 'none' > ${samplename}Aligned.sortedByCoord.out.bam.bai
     """
 }
 
@@ -199,7 +238,7 @@ process '4A_primerdepth' {
         file ".command.*"
     script:
         """
-        mosdepth --fast-mode --no-per-base --threads $threads --by ${bedfile} ${samplename} ${bam}
+        mosdepth --fast-mode --no-per-base --threads $threads ${samplename} ${bam}
         """
 }
 
@@ -217,7 +256,7 @@ process '4B_freebayes' {
     file "*"
   script:
     """
-    freebayes -f "${KMAdb}.fa" --ploidy 1 ${bam} > ${samplename}.vcf
+    freebayes -f ${STARfasta} --ploidy 1 ${bam} > ${samplename}.vcf
     """
 }
 
@@ -230,12 +269,12 @@ process '4C_abricate' {
   input:
     file consensus from consensus_4C
   output:
-    file "${samplename}_blast.txt"
+    file "${samplename}_blast.csv" into blast_7B
     file ".command.*"
   script:
     if(abricate==true)
     """
-    abricate --datadir ${blastdbpath} --db blast ${consensus} --mincov 30 --minid 60 --threads ${threads}  > ${samplename}_blast.txt
+    abricate --datadir ${blastdbpath} --db blast ${consensus} --mincov 30 --minid 60 --threads ${threads}  > ${samplename}_blast.csv
     """
     else if(abricate==false)
     """
@@ -255,20 +294,38 @@ process '5A_annotation' {
         file "${samplename}_annot_table.txt" into annotation_7
         file ".command.*"
   script:
-        if(database=="CYP51A")
         """
         bcftools view -f . ${vcf} > ${samplename}.pass.vcf
-        bcftools reheader -f "${KMAdb}.fa.fai" -o ${samplename}.pass.correct.vcf ${samplename}.pass.vcf
+        bcftools reheader -f "${STARfasta}.fai" -o ${samplename}.pass.correct.vcf ${samplename}.pass.vcf
         snpEff CYP51A ${samplename}.pass.correct.vcf -hgvs1LetterAa > ${samplename}.final.vcf
 
         ${baseDir}/conda/env-variantcalling/bin/python $vcf2table ${samplename}.final.vcf --sample ${samplename} \
         -ad -e -o ${samplename}_annot_table.txt
+        """
+}
 
+// 5B: create visualization
+process '5B_visualization' {
+    tag '5B'
+    conda 'bioconda::jvarkit-bam2svg'
+    publishDir outDir + '/report', mode: 'copy'
+    input:
+        file bam from bam_5B
+        file bamindex from bamindex_5B
+    output:
+        file "${samplename}_CYP51A.svg" into SVG_7B
+        file "file.list"
+        file ".command.*"
+  script:
+        if(visuals==true)
         """
-        else if(database!="CYP51A")
+        echo "${bam}" > file.list
+        bam2svg.sh -i "CYP51A:0-2000" --groupby readgroup -w 800 -R ${STARfasta} -o ${samplename}_CYP51A.svg file.list
         """
-        echo 'none' > ${samplename}.final.vcf
-        echo 'none' > ${samplename}_annot_table.txt
+        else if(visuals!=true)
+        """
+        echo "none" > "${samplename}_CYP51A.svg"
+        echo "none" > file.list
         """
 }
 
@@ -318,6 +375,9 @@ process '7B_report' {
         file annotation from annotation_7
         file params from params_7B
         file mosdepth from mosdepth_7B
+        file classify from classify_7B
+        file blast from blast_7B
+        file CYP51SVG from SVG_7B
     output:
         file "${samplename}.html"
         file "${samplename}.pdf"
@@ -325,6 +385,7 @@ process '7B_report' {
     script:
         """
         $reporter --sampleName ${samplename} \
-        --annotation ${annotation} --params ${params} --mosdepth ${mosdepth}
+        --annotation ${annotation} --params ${params} --mosdepth ${mosdepth} \
+        --classification ${classify} --blast ${blast} --visualization ${CYP51SVG}
         """
 }

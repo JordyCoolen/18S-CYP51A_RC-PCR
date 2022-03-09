@@ -2,7 +2,7 @@
 
 ######
 INFO = "Convert results to PDF report"
-__version__ = "0.2"
+__version__ = "0.3"
 ######
 
 """
@@ -31,6 +31,12 @@ def parse_args():
                         help="location to parameters.txt file"),
     parser.add_argument("--mosdepth", type=str, required=False,
                         help="location to mosdepth.summary.txt file"),
+    parser.add_argument("--classification", type=str, required=False,
+                        help="location to kma result .res file"),
+    parser.add_argument("--blast", type=str, required=False,
+                        help="location to blast result of abricate"),
+    parser.add_argument("--visualization", type=str, required=False,
+                        help="location to svg file"),
     parser.add_argument("-o", "--outputDir", type=str, required=False,
                         help="full path of output folder", default=os.path.abspath("./"))
     parser.add_argument("-v", "--version", action="version",
@@ -79,8 +85,11 @@ def fill_html(args):
     # load mosdepth.summary.txt file
     mosdepth_df = pd.read_csv(args.mosdepth, sep='\t')
 
-    # # load file with lineage output
-    # lineage_df = pd.read_csv(args.lineage)
+    # # load file with classification result
+    classify_df = pd.read_csv(args.classification, sep='\t')
+
+    # # load file with classification result
+    blast_df = pd.read_csv(args.blast, sep='\t')
 
     # obtain annotation file and stats
     variant_stats_df = pd.read_csv(args.annotation, sep='\t', engine='python', comment='##')
@@ -101,11 +110,20 @@ def fill_html(args):
         "sampleName": args.sampleName,
         "date": date,
 
+        # classification
+        "classify": classify_df.to_html(index=False, header=True),
+
+        # blast
+        "blast": blast_df.to_html(index=False, header=True),
+
         # mosdepth
         "depth": mosdepth_df.to_html(index=False, header=True),
 
         # variants
         "variants": variant_stats_df.to_html(index=False, header=True),
+
+        # CYP51A visualization
+        "visualization": os.path.basename(args.visualization),
 
         # parameters
         "parameters": params_df.to_html(index=False, header=True),

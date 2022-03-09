@@ -2,7 +2,7 @@
 <html>
 <head lang="en">
     <meta charset="UTF-8">
-    <title> RC-PCR </title>
+    <title> 18S/CYP51A RC-PCR </title>
 </head>
 <body>
 <center>
@@ -13,11 +13,20 @@
     <h1>{{sampleName}}</h1>
     <h3>Date: {{date}}</h3>
 
+    <h2>Classification</h2>
+    <h3>KMA</h3>
+    {{classify}}
+    <h3>blast</h3>
+    {{blast}}
+
     <h2>Depth</h2>
     {{depth}}
 
     <h2>Variants</h2>
     {{variants}}
+
+    <h2>CYP51A</h2>
+    <object data={{visualization}} width="auto" height="auto"> </object>
 
     <h2>Parameters</h2>
     {{parameters}}
