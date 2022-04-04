@@ -2,34 +2,37 @@ LOCUS       CYP51A                  2020 bp ds-DNA     linear       06-MAY-2021
 DEFINITION  .
 FEATURES             Location/Qualifiers
      primer          48..70
-                     /label="F_1_1"
+                     /label="F_1_3"
                      /note="sequence: GAATAATCGCAGCACCACTTCAG"
      primer          155..179
-                     /label="F_2_2"
+                     /label="F_2_4"
                      /note="sequence: ACACCCTAACTCATACTACGGTAGG"
      primer          complement(258..282)
-                     /label="R_1_1"
+                     /label="R_1_3"
                      /note="sequence: CTAGGACAAGGACGAATGAGAGACC"
      primer          341..365
-                     /label="F_3_1"
+                     /label="F_3_3"
                      /note="sequence: TTCATTTCCCTCATCACTGCAACTC"
      primer          complement(389..409)
-                     /label="R_2_2"
+                     /label="R_2_4"
                      /note="sequence: GGCACCATTTCGAGGAGACAC"
      misc_feature    402..602
                      /label="Exon_1"
      CDS             402..602
                      /label="Translation 402-602"
      primer          476..501
-                     /label="F_4_2"
+                     /label="F_4_4"
                      /note="sequence: TCAATTATTCTTTCGGCTTTGGAACC"
      primer          complement(497..517)
-                     /label="R_3_1"
+                     /label="R_3_3"
                      /note="sequence: ATTGGCGGTTCTGTTCGGTTC"
+     primer          572..595
+                     /label="F_13_3"
+                     /note="sequence: CTACAAGTTCTTCTTTGCGTGCAG"
      misc_feature    603..673
                      /label="Intron"
      primer          622..643
-                     /label="F_5_1"
+                     /label="F_5_3"
                      /note="sequence: TTTGACATTCATTCCTGGGCGC"
      primer          complement(667..689)
                      /label="R_4_2"
@@ -38,50 +41,53 @@ FEATURES             Location/Qualifiers
                      /label="Exon_2"
      CDS             674..2020
                      /label="Translation 674-2020"
+     primer          complement(717..737)
+                     /label="R_14_4"
+                     /note="sequence: CCTGAACGCCCAGGTAGACTG"
      primer          773..797
-                     /label="F_6_2"
+                     /label="F_6_4"
                      /note="sequence: GTCAATGCGGAAGAGGTCTATAGTC"
      primer          complement(819..842)
-                     /label="R_5_1"
+                     /label="R_5_3"
                      /note="sequence: GACAATCATACACCACGTCCGATC"
      primer          952..975
-                     /label="F_7_1"
+                     /label="F_7_3"
                      /note="sequence: CGATTCACCGAACTTTCAAGGCTC"
      primer          complement(1006..1029)
-                     /label="R_6_2"
+                     /label="R_6_4"
                      /note="sequence: GCGGTAAAAATGGTAATCTCAGCC"
      primer          1145..1166
-                     /label="F_8_2"
+                     /label="F_8_4"
                      /note="sequence: CCATTGCCGCATAACAAGAAGC"
      primer          complement(1184..1205)
-                     /label="R_7_1"
+                     /label="R_7_3"
                      /note="sequence: CAACGTAGATTGACCTCATGCG"
      primer          1284..1306
-                     /label="F_9_1"
+                     /label="F_9_3"
                      /note="sequence: CATACAAAAACGGCCAGCAAGTG"
      primer          complement(1325..1350)
-                     /label="R_8_2"
+                     /label="R_8_4"
                      /note="sequence: GCCATCAACAGGGTTATCATCATGTG"
      primer          1479..1499
-                     /label="F_10_2"
+                     /label="F_10_4"
                      /note="sequence: TTCCTCCGCTCCAGTACAAGG"
      primer          complement(1505..1529)
-                     /label="R_9_1"
+                     /label="R_9_3"
                      /note="sequence: CATGTTGATGGAAGGGAAGTTTGTC"
      primer          1673..1694
-                     /label="F_11_1"
+                     /label="F_11_3"
                      /note="sequence: GACGAACACTTCCCCAATGCTG"
      primer          complement(1716..1738)
-                     /label="R_10_2"
+                     /label="R_10_4"
                      /note="sequence: CTCCTTAGTAGCCTGGTTCTCCC"
      primer          1792..1815
-                     /label="F_12_2"
+                     /label="F_12_4"
                      /note="sequence: GTCAAGTCCCTATCTTCCGTTTGG"
      primer          complement(1898..1921)
-                     /label="R_11_1"
+                     /label="R_11_3"
                      /note="sequence: CTTTCCATCCACGTTGAAAAGTCG"
      primer          complement(1996..2018)
-                     /label="R_12_2"
+                     /label="R_12_4"
                      /note="sequence: ACTTGGATGTGTTTTTCGACCGC"
 ORIGIN
         1 CACTCTGAAT AATTTACACT GTTCTCCTCT AGAAAAAACT CATGAGTGAA TAATCGCAGC

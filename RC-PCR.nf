@@ -2,7 +2,7 @@
 params.threads = 4
 params.outDir = "./output"
 params.reads = "$baseDir/test/test_OUT01_R{1,2}.fastq.gz"
-params.UMILEN = 18
+params.UMILEN = 6
 params.minreadlength = 100
 params.database = "18S"
 params.snp_database = "CYP51A"
@@ -20,7 +20,7 @@ minreadlength    = "$params.minreadlength"
 database         = "$params.database"
 snp_database     = "$params.snp_database"
 primerfile       = "${baseDir}/db/${database}/primers/${database}_primers.fasta"
-bedfile          = "${baseDir}/db/${database}/primers/${database}_primers.bed"
+bedfile          = "${baseDir}/db/CYP51A/primers/CYP51A_bedpe_primers.bed"
 KMAdb            = "${baseDir}/db/${database}/KMA/${database}"
 blastdbpath      = "${baseDir}/db/${database}/"
 STARfasta        = "${baseDir}/db/${snp_database}/STAR/${snp_database}.fa"
@@ -73,7 +73,8 @@ STARfasta  : $STARfasta
 // Clean reads (adapter and read length filter)
 process '1A_clean_reads' {
     tag '1A'
-    conda 'bioconda::fastp=0.20.1 bioconda::pyfastx=0.6.12 conda-forge::simplejson=3.17.0'
+    //conda 'bioconda::fastp=0.20.1 bioconda::pyfastx=0.6.12 conda-forge::simplejson=3.17.0'
+    conda 'bioconda::fastp=0.23.2 bioconda::pyfastx=0.6.12 conda-forge::simplejson=3.17.0'
     publishDir outDir + '/fastp', mode: 'copy'
     input:
         set pairID, file(reads) from reads_ch1
@@ -149,14 +150,13 @@ process '3A_KMA' {
   file reads from fastp_3A
   output:
     file "${samplename}*"
-    file "${samplename}.vcf.gz"
     file "${samplename}.fsa" into consensus_4C
     file "${samplename}.sam" into kma_3B
     file "${samplename}.res" into classify_7B
     file ".command.*"
   script:
     """
-    kma -t_db ${KMAdb} -ipe ${reads[0]} ${reads[1]} -t ${threads} -gapextend 0 -a -ex_mode -ef -1t1 -vcf 2 -and -apm f -o ${samplename} -sam 4 > ${samplename}.sam 2>/dev/null || exit 0
+    kma -t_db ${KMAdb} -ipe ${reads[0]} ${reads[1]} -t ${threads} -1t1 -a -ex_mode -ef -and -apm f -o ${samplename} -sam 4 > ${samplename}.sam 2>/dev/null || exit 0
     #kma -t_db ${KMAdb} -ipe ${reads[0]} ${reads[1]} -t ${threads} -a -ex_mode -ef -dense -1t1 -ref_fsa -mem_mode -and -apm f -o kma 2>/dev/null || exit 0
     """
 }
@@ -199,9 +199,9 @@ process '3C_STAR' {
   input:
   file reads from fastp_3C
   output:
-    file "*"
-    file "${samplename}Aligned.sortedByCoord.out.bam" into bam_4A, bam_4B
-    file "${samplename}Aligned.sortedByCoord.out.bam.bai" into bamindex_4A, bamindex_4B
+    file "*.out"
+    file "${samplename}.star.bam" into bam_3D
+    file "${samplename}.star.bam.bai" into bamindex_3D
     file "${samplename}.unique.sorted.bam" into bam_5B
     file "${samplename}.unique.sorted.bam.bai" into bamindex_5B
     file ".command.*"
@@ -219,11 +219,37 @@ process '3C_STAR' {
     samtools rmdup ${samplename}Aligned.sortedByCoord.out.bam ${samplename}.unique.bam
     # sort bam file unique
     samtools sort ${samplename}.unique.bam > ${samplename}.unique.sorted.bam
+
+    # rename bam file
+    mv ${samplename}Aligned.sortedByCoord.out.bam ${samplename}.star.bam
+
     # index bam files
     samtools index ${samplename}.unique.sorted.bam
-    samtools index ${samplename}Aligned.sortedByCoord.out.bam
+    samtools index ${samplename}.star.bam
     """
 }
+
+// Process 3D: Filter the bam file of primer sequences
+process '3D_bam_clipper' {
+    tag '3D'
+    conda 'bioconda::bwa=0.7.17 bioconda::samtools=1.11 bioconda::bamclipper=1.0.0'
+    publishDir outDir + '/star', mode: 'copy'
+    input:
+        file bam from bam_3D
+        file bamindex from bamindex_3D
+    output:
+        file("${samplename}.final.bam") into (bam_4A, bam_4B)
+        file("${samplename}.final.bam.bai") into (bamindex_4A, bamindex_4B)
+        file ".command.*"
+    script:
+        """
+        bamclipper.sh -b ${bam} -n ${threads} -p $bedfile -u 10 -d 10
+
+        samtools sort ${samplename}.star.primerclipped.bam -o ${samplename}.final.bam
+        samtools index ${samplename}.final.bam
+        """
+}
+
 
 // Process 4A: primerdepth
 process '4A_primerdepth' {

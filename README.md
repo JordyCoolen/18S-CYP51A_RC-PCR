@@ -1,4 +1,4 @@
-#RC-PCR pipeline V0.1.1 (BETA)
+#RC-PCR pipeline V0.2 (BETA)
 
 # install
 1. obtain docker image
@@ -135,6 +135,17 @@ convert rRNA to DNA
 perl -pe 'tr/tU/uT/ unless(/>/)' < db/SILVA_138.1_SSURef_NR99_tax_silva_trunc.fasta > SILVA_138.1_SSURef_NR99_tax_silva_trunc_DNA.fasta
 ```
 
+# aggregation example of UMI counttables
+copy UMI counttable files to new folder
+```bash
+cp <pathto>/*/report/UMI/*counttable.csv <pathto>/summary
+```
+create summary on files
+```bash
+python scripts/aggregation/aggregate_UMI.py -i <pathto>/summary -o <pathto>/summary
+```
+
 # NOTES
+# not implemented
 splitting of samples on UMI using seqkit
 seqkit grep -irp UMI samplename.fastq.gz > output.fastq

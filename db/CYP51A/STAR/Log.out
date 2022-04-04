@@ -1,0 +1,56 @@
+STAR version=2.7.10a
+STAR compilation time,server,dir=2022-01-14T18:50:00-05:00 :/home/dobin/data/STAR/STARcode/STAR.master/source
+STAR git: On branch master ; commit ae26add7ea1724f3281ec8abedb71bcff6a4ae73 ; diff files: CHANGES.md README.md RELEASEnotes.md doc/STARmanual.pdf extras/doc-latex/STARmanual.tex extras/doc-latex/convertParDefToLatexTable.awk extras/doc-latex/parametersDefault.tex extras/docker/Dockerfile source/VERSION 
+##### Command Line:
+STAR --runMode genomeGenerate --genomeDir /workflow/db/CYP51A/STAR/ --genomeFastaFiles /workflow/db/CYP51A/STAR/CYP51A.fa --genomeSAindexNbases 4
+##### Initial USER parameters from Command Line:
+###### All USER parameters from Command Line:
+runMode                       genomeGenerate        ~RE-DEFINED
+genomeDir                     /workflow/db/CYP51A/STAR/     ~RE-DEFINED
+genomeFastaFiles              /workflow/db/CYP51A/STAR/CYP51A.fa        ~RE-DEFINED
+genomeSAindexNbases           4     ~RE-DEFINED
+##### Finished reading parameters from all sources
+
+##### Final user re-defined parameters-----------------:
+runMode                           genomeGenerate   
+genomeDir                         /workflow/db/CYP51A/STAR/
+genomeFastaFiles                  /workflow/db/CYP51A/STAR/CYP51A.fa   
+genomeSAindexNbases               4
+
+-------------------------------
+##### Final effective command line:
+STAR   --runMode genomeGenerate      --genomeDir /workflow/db/CYP51A/STAR/   --genomeFastaFiles /workflow/db/CYP51A/STAR/CYP51A.fa      --genomeSAindexNbases 4
+----------------------------------------
+
+Number of fastq files for each mate = 1
+ParametersSolo: --soloCellFilterType CellRanger2.2 filtering parameters:  3000 0.99 10
+Finished loading and checking parameters
+--genomeDir directory exists and will be overwritten: /workflow/db/CYP51A/STAR/
+Mar 08 11:18:15 ... starting to generate Genome files
+/workflow/db/CYP51A/STAR/CYP51A.fa : chr # 0  "CYP51A" chrStart: 0
+Chromosome sequence lengths: 
+CYP51A	2020
+Genome sequence total length = 2020
+Genome size with padding = 262144
+Estimated genome size with padding and SJs: total=genome+SJ=201262144 = 262144 + 201000000
+GstrandBit=32
+Number of SA indices: 4040
+Mar 08 11:18:15 ... starting to sort Suffix Array. This may take a long time...
+Number of chunks: 1;   chunks size limit: 18599685304 bytes
+Mar 08 11:18:15 ... sorting Suffix Array chunks and saving them to disk...
+Writing 32320 bytes into /workflow/db/CYP51A/STAR//SA_0 ; empty space on disk = 26858883121152 bytes ... done
+Mar 08 11:18:15 ... loading chunks from disk, packing SA...
+Mar 08 11:18:15 ... finished generating suffix array
+Mar 08 11:18:15 ... generating Suffix Array index
+Mar 08 11:18:15 ... completed Suffix Array index
+Mar 08 11:18:15 ... writing Genome to disk ...
+Writing 262144 bytes into /workflow/db/CYP51A/STAR//Genome ; empty space on disk = 26858950230016 bytes ... done
+SA size in bytes: 16668
+Mar 08 11:18:15 ... writing Suffix Array to disk ...
+Writing 16668 bytes into /workflow/db/CYP51A/STAR//SA ; empty space on disk = 26858888364032 bytes ... done
+Mar 08 11:18:15 ... writing SAindex to disk
+Writing 8 bytes into /workflow/db/CYP51A/STAR//SAindex ; empty space on disk = 26858884169728 bytes ... done
+Writing 40 bytes into /workflow/db/CYP51A/STAR//SAindex ; empty space on disk = 26858884169728 bytes ... done
+Writing 1491 bytes into /workflow/db/CYP51A/STAR//SAindex ; empty space on disk = 26858884169728 bytes ... done
+Mar 08 11:18:15 ..... finished successfully
+DONE: Genome generation, EXITING

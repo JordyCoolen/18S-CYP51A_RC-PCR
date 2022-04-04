@@ -18,5 +18,5 @@ do
     --mount type=bind,source=${1},target=/workflow/input \
     ${5} nextflow run RC-PCR.nf \
     --reads "/workflow/input/${base}_R{1,2}${2}" --outDir /workflow/output_${6}/ \
-    --threads ${4} --database ${3} -resume --UMILEN 10 -with-dag flowchart.png
+    --threads ${4} --database ${3} -resume --UMILEN 6 --visuals false
 done
