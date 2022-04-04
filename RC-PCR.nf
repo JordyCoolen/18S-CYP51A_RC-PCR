@@ -243,7 +243,7 @@ process '3D_bam_clipper' {
         file ".command.*"
     script:
         """
-        bamclipper.sh -b ${bam} -n ${threads} -p $bedfile -u 10 -d 10
+        bamclipper.sh -b ${bam} -n ${threads} -p $bedfile -u 15 -d 15
 
         samtools sort ${samplename}.star.primerclipped.bam -o ${samplename}.final.bam
         samtools index ${samplename}.final.bam
