@@ -1,5 +1,6 @@
 output/*
 output_*/*
+old_output_*/*
 test/*
 conda/*
 work/*

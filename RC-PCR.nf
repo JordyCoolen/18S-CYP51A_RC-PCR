@@ -20,6 +20,7 @@ minreadlength    = "$params.minreadlength"
 database         = "$params.database"
 snp_database     = "$params.snp_database"
 primerfile       = "${baseDir}/db/${database}/primers/${database}_primers.fasta"
+ptrimfile        = "${baseDir}/db/${database}/primers/all_amplicon.txt"
 bedfile          = "${baseDir}/db/CYP51A/primers/CYP51A_bedpe_primers.bed"
 KMAdb            = "${baseDir}/db/${database}/KMA/${database}"
 blastdbpath      = "${baseDir}/db/${database}/"
@@ -40,11 +41,11 @@ threads          = "$params.threads"
 Channel
       .fromFilePairs( params.reads )
       .ifEmpty { "cannot find read pairs in path"}
-      .set  { reads_ch1 }
+      .into  { reads_ch1; reads_ch2 }
 
 log.info """
 
-NEXTFLOW 18S/CYP51A RC-PCR V0.3
+NEXTFLOW 18S/CYP51A RC-PCR V0.4
 ================================
 samplename : $samplename
 reads      : $params.reads
@@ -70,16 +71,15 @@ STARfasta  : $STARfasta
 ================================
 """
 
-// Clean reads (adapter and read length filter)
-process '1A_clean_reads' {
+// Get UMI from cleaned reads
+process '1A_UMI_reads' {
     tag '1A'
-    //conda 'bioconda::fastp=0.20.1 bioconda::pyfastx=0.6.12 conda-forge::simplejson=3.17.0'
     conda 'bioconda::fastp=0.23.2 bioconda::pyfastx=0.6.12 conda-forge::simplejson=3.17.0'
-    publishDir outDir + '/fastp', mode: 'copy'
+    publishDir outDir + '/report/UMI', mode: 'copy'
     input:
         set pairID, file(reads) from reads_ch1
     output:
-        set file("${samplename}_R1_fastp.fastq.gz"), file("${samplename}_R2_fastp.fastq.gz") into fastp_2A, fastp_3A, fastp_3C, fastp_6
+        set file("${samplename}_R1_fastp.fastq.gz"), file("${samplename}_R2_fastp.fastq.gz") into fastp_2A
         file "${samplename}.fastp.json"
         file "${samplename}.fastp.html"
         file ".command.*"
@@ -94,9 +94,50 @@ process '1A_clean_reads' {
 }
 
 // Clean reads (adapter and read length filter)
+process '1B_clean_reads' {
+    tag '1B'
+    conda 'bioconda::fastp=0.23.2 bioconda::pyfastx=0.6.12 conda-forge::simplejson=3.17.0'
+    publishDir outDir + '/fastp', mode: 'copy'
+    input:
+        set pairID, file(reads) from reads_ch2
+    output:
+        set file("${samplename}_R1_fastp.fastq.gz"), file("${samplename}_R2_fastp.fastq.gz") into fastp_1C
+        file "${samplename}.fastp.json"
+        file "${samplename}.fastp.html"
+        file ".command.*"
+    script:
+        """
+        fastp -i ${reads[0]} -o ${samplename}_R1_fastp.fastq.gz \
+                                -I ${reads[1]} -O ${samplename}_R2_fastp.fastq.gz \
+                                --html ${samplename}.fastp.html --json ${samplename}.fastp.json \
+                                --length_required ${minreadlength} --trim_poly_g --trim_poly_x
+        """
+}
+
+// Clean reads (adapter and read length filter)
+process '1C_remove_primers' {
+    tag '1C'
+    conda 'bioconda::ptrimmer=1.3.3'
+    publishDir outDir + '/fastp', mode: 'copy'
+    input:
+        file reads from fastp_1C
+    output:
+        set file("${samplename}_R1_fastp.trim.fastq.gz"), file("${samplename}_R2_fastp.trim.fastq.gz") into fastp_3A, fastp_3C, fastp_6
+        file "*"
+    script:
+        """
+        ptrimmer -t pair --ampfile ${ptrimfile} --read1 ${reads[0]} --trim1 ${samplename}_R1_fastp.trim.fastq \
+        --read2 ${reads[1]} --trim2 ${samplename}_R2_fastp.trim.fastq --summary ${samplename}.summary.ampcount.txt
+
+        gzip ${samplename}_R1_fastp.trim.fastq
+        gzip ${samplename}_R2_fastp.trim.fastq
+        """
+}
+
+// Measure the UMI to get number of amplicons
 process '2A_measure_amplicons' {
     tag '2A'
-    conda 'conda-forge::pandas=1.2.4 bioconda::pysam=0.15.3 anaconda::openpyxl'
+    conda 'conda-forge::pandas=1.2.4 bioconda::pysam=0.19.0 bioconda::htslib=1.15.1 anaconda::openpyxl'
     publishDir outDir + '/report/UMI', mode: 'copy'
     input:
         set file(forward_read), file(reverse_read) from fastp_2A
@@ -194,14 +235,15 @@ process '3B_process_KMA' {
 process '3C_STAR' {
   tag '3C'
   time "30m"
-  conda 'bioconda::star=2.7.10a'
+  conda 'bioconda::star=2.7.9a bioconda::samtools=1.12'
+  //conda 'bioconda::star=2.7.10a'
   publishDir outDir + '/star', mode: 'copy'
   input:
   file reads from fastp_3C
   output:
     file "*.out"
-    file "${samplename}.star.bam" into bam_3D
-    file "${samplename}.star.bam.bai" into bamindex_3D
+    file "${samplename}.final.bam" into bam_4A, bam_4B
+    file "${samplename}.final.bam.bai" into bamindex_4A, bamindex_4B
     file "${samplename}.unique.sorted.bam" into bam_5B
     file "${samplename}.unique.sorted.bam.bai" into bamindex_5B
     file ".command.*"
@@ -211,45 +253,22 @@ process '3C_STAR' {
     #STAR --runMode genomeGenerate --genomeDir "${baseDir}/db/CYP51A/STAR/" --genomeFastaFiles $STARfasta --genomeSAindexNbases 4
     STAR --genomeDir "${baseDir}/db/${snp_database}/STAR/" --readFilesCommand zcat --readFilesIn ${reads[0]} ${reads[1]} \
     --scoreDelOpen 0 --scoreDelBase 0 --scoreInsOpen 0 --scoreInsBase 0 \
-    --seedSearchStartLmax 20 --winAnchorMultimapNmax 200 --seedMultimapNmax 100000 \
     --alignIntronMax 100 \
     --runThreadN ${threads} --outFileNamePrefix ${samplename} --limitBAMsortRAM 1001609349 --outSAMtype BAM SortedByCoordinate
 
-    # remove duplicates for visualization
-    samtools rmdup ${samplename}Aligned.sortedByCoord.out.bam ${samplename}.unique.bam
+    #samtools rmdup ${samplename}Aligned.sortedByCoord.out.bam ${samplename}.unique.bam
     # sort bam file unique
-    samtools sort ${samplename}.unique.bam > ${samplename}.unique.sorted.bam
+    #samtools sort ${samplename}.unique.bam > ${samplename}.unique.sorted.bam
 
     # rename bam file
-    mv ${samplename}Aligned.sortedByCoord.out.bam ${samplename}.star.bam
+    mv ${samplename}Aligned.sortedByCoord.out.bam ${samplename}.final.bam
+    cp ${samplename}.final.bam ${samplename}.unique.sorted.bam
 
     # index bam files
     samtools index ${samplename}.unique.sorted.bam
-    samtools index ${samplename}.star.bam
+    samtools index ${samplename}.final.bam
     """
 }
-
-// Process 3D: Filter the bam file of primer sequences
-process '3D_bam_clipper' {
-    tag '3D'
-    conda 'bioconda::bwa=0.7.17 bioconda::samtools=1.11 bioconda::bamclipper=1.0.0'
-    publishDir outDir + '/star', mode: 'copy'
-    input:
-        file bam from bam_3D
-        file bamindex from bamindex_3D
-    output:
-        file("${samplename}.final.bam") into (bam_4A, bam_4B)
-        file("${samplename}.final.bam.bai") into (bamindex_4A, bamindex_4B)
-        file ".command.*"
-    script:
-        """
-        bamclipper.sh -b ${bam} -n ${threads} -p $bedfile -u 15 -d 15
-
-        samtools sort ${samplename}.star.primerclipped.bam -o ${samplename}.final.bam
-        samtools index ${samplename}.final.bam
-        """
-}
-
 
 // Process 4A: primerdepth
 process '4A_primerdepth' {
