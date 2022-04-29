@@ -1,4 +1,4 @@
-#RC-PCR pipeline V0.2 (BETA)
+#RC-PCR pipeline V0.4 (BETA)
 
 # install
 1. obtain docker image
